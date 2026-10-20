@@ -36,3 +36,32 @@ CREATE TABLE IF NOT EXISTS kpi_unidad_periodo (
 CREATE INDEX IF NOT EXISTS idx_medicion_periodo ON medicion_15min(periodo, planta_id);
 CREATE INDEX IF NOT EXISTS idx_operacion_periodo ON operacion_horaria(periodo, planta_id, unidad_id);
 CREATE INDEX IF NOT EXISTS idx_causa_periodo ON causa_no_generacion(periodo, tipo, planta_id);
+-- Catálogo de archivos históricos y trazabilidad de fuentes.
+CREATE TABLE IF NOT EXISTS fuente_archivo (
+    fuente_archivo_id INTEGER PRIMARY KEY,
+    ruta_original TEXT NOT NULL UNIQUE,
+    nombre_archivo TEXT NOT NULL,
+    extension TEXT,
+    tamano_bytes INTEGER,
+    anios_detectados TEXT,
+    tipo_probable TEXT,
+    sha256 TEXT,
+    fecha_catalogo TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    estado TEXT NOT NULL DEFAULT 'catalogado'
+);
+
+CREATE TABLE IF NOT EXISTS periodo_operativo_planta (
+    planta_id TEXT NOT NULL,
+    fecha_inicio TEXT NOT NULL,
+    fecha_fin TEXT,
+    estado TEXT NOT NULL CHECK (estado IN ('activa', 'no_operaba', 'desconocida')),
+    evidencia TEXT,
+    PRIMARY KEY (planta_id, fecha_inicio)
+);
+
+-- Regla histórica conocida del proyecto: Pando entra al conjunto operativo en 2019.
+INSERT OR IGNORE INTO periodo_operativo_planta
+    (planta_id, fecha_inicio, fecha_fin, estado, evidencia)
+VALUES
+    ('ML', '2014-01-01', NULL, 'activa', 'histórico operativo'),
+    ('PDO', '2019-01-01', NULL, 'activa', 'histórico operativo; validar fecha exacta de puesta en servicio');
