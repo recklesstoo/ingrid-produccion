@@ -193,10 +193,21 @@ def needs_ml_estimate(row: dict[str, object]) -> tuple[bool, str]:
     return False, ""
 
 
+def fill_missing_smec(rows: list[dict[str, object]], column: str, index: int) -> tuple[float | None, str]:
+    """Usa la lectura SMEC válida más cercana para completar un único hueco."""
+    for distance in range(1, len(rows)):
+        for candidate in (index - distance, index + distance):
+            if 0 <= candidate < len(rows):
+                value = parse_float(rows[candidate].get(column))
+                if value is not None and value > 0:
+                    return value, "smec_faltante_estimado_intervalo_vecino"
+    return None, "smec_faltante_sin_referencia"
+
+
 def correct_pando(rows: list[dict[str, object]], online: dict[tuple[str, str, datetime], bool]) -> tuple[int, dict[str, object]]:
     profile = pando_profile(rows)
     corrected = 0
-    for row in rows:
+    for index, row in enumerate(rows):
         timestamp = excel_dt(row["Timestamp"])
         should_estimate, reason = needs_pando_estimate(row)
         if not should_estimate:
@@ -205,6 +216,11 @@ def correct_pando(rows: list[dict[str, object]], online: dict[tuple[str, str, da
             row["Motivo"] = ""
             continue
         se = parse_float(row.get("SE Primavera (MWh)"))
+        if se is None:
+            se, smec_reason = fill_missing_smec(rows, "SE Primavera (MWh)", index)
+            reason = smec_reason
+            if se is not None:
+                row["SE Primavera (MWh)"] = se
         active = online_units(online, "PDO", timestamp)
         if se is None or se <= 0 or not active:
             row["Calidad"] = "hueco"
@@ -236,7 +252,7 @@ def correct_pando(rows: list[dict[str, object]], online: dict[tuple[str, str, da
 def correct_ml(rows: list[dict[str, object]], online: dict[tuple[str, str, datetime], bool]) -> tuple[int, dict[str, object]]:
     profile = ml_profile(rows)
     corrected = 0
-    for row in rows:
+    for index, row in enumerate(rows):
         timestamp = excel_dt(row["Timestamp"])
         should_estimate, reason = needs_ml_estimate(row)
         if not should_estimate:
@@ -245,6 +261,11 @@ def correct_ml(rows: list[dict[str, object]], online: dict[tuple[str, str, datet
             row["Motivo"] = ""
             continue
         se = parse_float(row.get("SE El Alto (MWh)"))
+        if se is None:
+            se, smec_reason = fill_missing_smec(rows, "SE El Alto (MWh)", index)
+            reason = smec_reason
+            if se is not None:
+                row["SE El Alto (MWh)"] = se
         active = online_units(online, "ML", timestamp)
         if se is None or se <= 0 or not active:
             row["Calidad"] = "hueco"
