@@ -1,0 +1,15 @@
+*.sqlite
+*.db
+*.zip
+*.xls
+*.xlsx
+*.csv
+*.tsv
+*.log
+__pycache__/
+.venv/
+.env
+secrets/
+work/
+inbox/
+
